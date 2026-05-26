@@ -1,5 +1,33 @@
 const API = "/api";
 
+/* 数字人文配色 */
+const DH_COLORS = {
+  ink: "#2a2218",
+  inkFaint: "#7a6e5c",
+  cinnabar: "#a83f39",
+  cinnabarLight: "rgba(168, 63, 57, 0.75)",
+  indigo: "#3d5a80",
+  indigoLight: "rgba(61, 90, 128, 0.7)",
+  gold: "#8b6914",
+  tea: "#5c7a5a",
+  clay: "#9a7b5a",
+  mist: "#6a8cad",
+  parchment: "#c4b59a",
+  chartPalette: [
+    "#a83f39", "#3d5a80", "#8b6914", "#5c7a5a",
+    "#9a7b5a", "#6a8cad", "#7a5c8a", "#c45c48",
+    "#4a6fa5", "#b8860b",
+  ],
+};
+
+const chartDefaults = {
+  color: DH_COLORS.inkFaint,
+  font: { family: '"Noto Serif SC", "Songti SC", serif' },
+};
+
+Chart.defaults.color = chartDefaults.color;
+Chart.defaults.font.family = chartDefaults.font.family;
+
 async function fetchJson(path) {
   const res = await fetch(API + path);
   if (!res.ok) throw new Error(`请求失败: ${path} (${res.status})`);
@@ -14,6 +42,12 @@ function showError(msg) {
 
 function formatNum(n) {
   return Number(n).toLocaleString("zh-CN");
+}
+
+function setDbStatus(text, connected) {
+  const el = document.getElementById("db-status");
+  el.textContent = text;
+  el.classList.toggle("connected", connected);
 }
 
 async function loadStats() {
@@ -38,17 +72,40 @@ async function loadProvinceChart() {
     data: {
       labels,
       datasets: [
-        { label: "景点总数", data: totals, backgroundColor: "rgba(74, 158, 255, 0.7)" },
-        { label: "徐霞客足迹", data: xuxiake, backgroundColor: "rgba(201, 162, 39, 0.85)" },
+        {
+          label: "景点总数",
+          data: totals,
+          backgroundColor: DH_COLORS.indigoLight,
+          borderColor: DH_COLORS.indigo,
+          borderWidth: 1,
+        },
+        {
+          label: "徐霞客足迹",
+          data: xuxiake,
+          backgroundColor: DH_COLORS.cinnabarLight,
+          borderColor: DH_COLORS.cinnabar,
+          borderWidth: 1,
+        },
       ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: "#8b9cb3" } } },
+      plugins: {
+        legend: {
+          labels: { color: DH_COLORS.ink, padding: 16, usePointStyle: true },
+        },
+      },
       scales: {
-        x: { ticks: { color: "#8b9cb3", maxRotation: 45 } },
-        y: { ticks: { color: "#8b9cb3" }, beginAtZero: true },
+        x: {
+          grid: { display: false },
+          ticks: { color: DH_COLORS.inkFaint, maxRotation: 45 },
+        },
+        y: {
+          grid: { color: "rgba(196, 181, 154, 0.5)" },
+          ticks: { color: DH_COLORS.inkFaint },
+          beginAtZero: true,
+        },
       },
     },
   });
@@ -63,17 +120,26 @@ async function loadTopCheckinsChart() {
       datasets: [
         {
           data: data.map((d) => d.checkin_count),
-          backgroundColor: [
-            "#c9a227", "#4a9eff", "#3dd68c", "#e8784a", "#9b7ede",
-            "#5ec8e8", "#e85d8a", "#7eb86a", "#d4a574", "#6a8cad",
-          ],
+          backgroundColor: DH_COLORS.chartPalette,
+          borderColor: "#faf6ee",
+          borderWidth: 2,
         },
       ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { position: "right", labels: { color: "#8b9cb3", boxWidth: 12 } } },
+      plugins: {
+        legend: {
+          position: "right",
+          labels: {
+            color: DH_COLORS.ink,
+            boxWidth: 10,
+            padding: 10,
+            font: { size: 11 },
+          },
+        },
+      },
     },
   });
 }
@@ -117,8 +183,8 @@ async function loadLocations() {
     <tr>
       <td>${escapeHtml(r.LocName)}</td>
       <td>${escapeHtml(r.Province)}</td>
-      <td>${r.IsXuXiake ? '<span class="tag">徐霞客足迹</span>' : '<span class="tag normal">—</span>'}</td>
-      <td><a class="link lit-link" data-id="${r.LocationID}">文献</a></td>
+      <td>${r.IsXuXiake ? '<span class="tag">霞客足迹</span>' : '<span class="tag normal">—</span>'}</td>
+      <td><a class="link lit-link" data-id="${r.LocationID}">阅典籍</a></td>
     </tr>`
     )
     .join("");
@@ -137,7 +203,7 @@ async function fillProvinceFilter() {
   data.forEach((d) => {
     const opt = document.createElement("option");
     opt.value = d.Province;
-    opt.textContent = `${d.Province} (${d.total})`;
+    opt.textContent = `${d.Province}（${d.total}）`;
     sel.appendChild(opt);
   });
 }
@@ -147,36 +213,40 @@ async function openTravelog(id) {
   const modal = document.getElementById("modal");
   document.getElementById("modal-title").textContent = data.Title;
   document.getElementById("modal-meta").textContent =
-    `作者 ${data.Username} · ${data.PublishTime} · ${formatNum(data.Likes)} 赞 · ${data.checkins.length} 处打卡`;
+    `${data.Username} · ${data.PublishTime} · ${formatNum(data.Likes)} 赞 · ${data.checkins.length} 处打卡`;
   document.getElementById("modal-body").textContent = data.Content;
   const list = document.getElementById("modal-checkins");
   list.innerHTML = data.checkins
     .map(
       (c) =>
-        `<li>${escapeHtml(c.LocName)}（${escapeHtml(c.Province)}）${c.IsXuXiake ? " ★" : ""} — ${c.CheckInTime}</li>`
+        `<li>${escapeHtml(c.LocName)}（${escapeHtml(c.Province)}）${c.IsXuXiake ? " · 霞客足迹" : ""} — ${c.CheckInTime}</li>`
     )
     .join("");
   modal.classList.add("open");
+  document.body.style.overflow = "hidden";
 }
 
 async function openLiterature(locationId) {
   const data = await fetchJson(`/locations/${locationId}/literature`);
   const modal = document.getElementById("modal");
-  document.getElementById("modal-title").textContent = data.location.LocName + " · 关联文献";
+  document.getElementById("modal-title").textContent = `${data.location.LocName} · 典籍`;
   document.getElementById("modal-meta").textContent = data.location.Province;
   document.getElementById("modal-body").innerHTML =
     data.literature.length === 0
-      ? "<p>暂无文献记录</p>"
+      ? '<p class="lit-translate">此地暂无著录文献。</p>'
       : data.literature
           .map(
-            (l) =>
-              `<p><strong>${escapeHtml(l.WriteDate || "年代不详")}</strong></p>
-           <p>${escapeHtml(l.OriginalText)}</p>
-           <p style="color:#8b9cb3;margin-top:0.5rem">${escapeHtml(l.TranslateInfo || "")}</p><hr style="border-color:#2d3d52;margin:1rem 0">`
+            (l) => `
+          <div class="lit-block">
+            <p class="lit-date">${escapeHtml(l.WriteDate || "年代不详")}</p>
+            <p class="lit-original">${escapeHtml(l.OriginalText)}</p>
+            ${l.TranslateInfo ? `<p class="lit-translate">${escapeHtml(l.TranslateInfo)}</p>` : ""}
+          </div>`
           )
           .join("");
   document.getElementById("modal-checkins").innerHTML = "";
   modal.classList.add("open");
+  document.body.style.overflow = "hidden";
 }
 
 function escapeHtml(s) {
@@ -186,16 +256,20 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
-document.getElementById("modal-close").addEventListener("click", () => {
+function closeModal() {
   document.getElementById("modal").classList.remove("open");
-});
+  document.body.style.overflow = "";
+}
+
+document.getElementById("modal-close").addEventListener("click", closeModal);
+document.querySelector(".modal-backdrop")?.addEventListener("click", closeModal);
 
 document.getElementById("btn-filter").addEventListener("click", () => loadLocations());
 
 async function init() {
   try {
     const health = await fetchJson("/health");
-    document.getElementById("db-status").textContent = `已连接 · ${health.database}`;
+    setDbStatus(`已接通 · ${health.database}`, true);
     await loadStats();
     await fillProvinceFilter();
     await loadProvinceChart();
@@ -203,6 +277,7 @@ async function init() {
     await loadLatestTravelogs();
     await loadLocations();
   } catch (e) {
+    setDbStatus("未连接", false);
     showError("无法加载数据：" + e.message + "。请确认后端服务与 MySQL 已启动。");
     console.error(e);
   }

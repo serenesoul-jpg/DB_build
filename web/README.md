@@ -1,8 +1,8 @@
-# 徐霞客时空游记 — 数据可视化 Web
+# 徐霞客时空游记 — Web 看板
 
-连接 `xuxiake_travel_db`，在浏览器中展示用户、景点、游记、打卡等统计与列表。
+Flask 只读 API + 静态前端，对接 `xuxiake_travel_db`，提供运营统计与内容浏览。
 
-项目总览、建库灌数与环境配置见仓库根目录 [README.md](../README.md)。
+项目总览与部署说明见 [README.md](../README.md)。
 
 ## 公网访问
 

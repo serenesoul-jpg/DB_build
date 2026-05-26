@@ -3,84 +3,116 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>徐霞客时空游记系统 · 数据看板</title>
+  <title>徐霞客时空游记 · 数字人文数据看板</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <header>
-    <h1>徐霞客时空游记系统 <span class="badge" id="db-status">连接中…</span></h1>
-    <p>课程数据库 xuxiake_travel_db 实时可视化 · 用户 · 景点 · 游记 · 时空打卡</p>
+  <div class="page-bg" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-ornament left" aria-hidden="true">游<br>记</div>
+      <div class="header-main">
+        <p class="header-eyebrow">Digital Humanities · 时空叙事数据库</p>
+        <h1>徐霞客时空游记系统</h1>
+        <p class="header-desc">舆图 · 足迹 · 文献 · 打卡 — 古今行旅数据的结构化呈现</p>
+        <span class="seal" id="db-status">载入中</span>
+      </div>
+      <div class="header-ornament right" aria-hidden="true">足<br>迹</div>
+    </div>
   </header>
 
   <main>
     <div id="error" class="error-banner"></div>
 
-    <section class="stats-grid">
-      <div class="stat-card"><div class="label">注册用户</div><div class="value" id="stat-users">—</div></div>
-      <div class="stat-card"><div class="label">景点</div><div class="value" id="stat-locations">—</div></div>
-      <div class="stat-card highlight"><div class="label">徐霞客足迹</div><div class="value" id="stat-xuxiake">—</div></div>
-      <div class="stat-card"><div class="label">游记</div><div class="value" id="stat-travelogs">—</div></div>
-      <div class="stat-card"><div class="label">时空打卡</div><div class="value" id="stat-checkins">—</div></div>
-      <div class="stat-card"><div class="label">文献</div><div class="value" id="stat-literature">—</div></div>
-      <div class="stat-card"><div class="label">总点赞</div><div class="value" id="stat-likes">—</div></div>
-    </section>
-
-    <section class="grid-2">
-      <div class="panel">
-        <h2>各省景点分布</h2>
-        <div class="chart-wrap"><canvas id="chart-provinces"></canvas></div>
-      </div>
-      <div class="panel">
-        <h2>热门打卡景点 TOP10</h2>
-        <div class="chart-wrap"><canvas id="chart-checkins"></canvas></div>
+    <section class="section-block">
+      <h2 class="section-title"><span class="section-num">壹</span>数据概览</h2>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="label">注册用户</div><div class="value" id="stat-users">—</div></div>
+        <div class="stat-card"><div class="label">景点</div><div class="value" id="stat-locations">—</div></div>
+        <div class="stat-card highlight"><div class="label">徐霞客足迹</div><div class="value" id="stat-xuxiake">—</div></div>
+        <div class="stat-card"><div class="label">游记</div><div class="value" id="stat-travelogs">—</div></div>
+        <div class="stat-card"><div class="label">时空打卡</div><div class="value" id="stat-checkins">—</div></div>
+        <div class="stat-card"><div class="label">文献</div><div class="value" id="stat-literature">—</div></div>
+        <div class="stat-card"><div class="label">总点赞</div><div class="value" id="stat-likes">—</div></div>
       </div>
     </section>
 
-    <section class="grid-2">
-      <div class="panel">
-        <h2>最新游记</h2>
-        <table id="travelog-table">
-          <thead>
-            <tr><th>标题</th><th>作者</th><th>打卡</th><th>赞</th><th>发布时间</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <div class="panel">
-        <h2>景点浏览</h2>
-        <div class="filters">
-          <select id="filter-province"><option value="">全部省份</option></select>
-          <select id="filter-xuxiake">
-            <option value="">全部景点</option>
-            <option value="1">仅徐霞客足迹</option>
-            <option value="0">非足迹景点</option>
-          </select>
-          <button type="button" id="btn-filter">筛选</button>
+    <section class="section-block">
+      <h2 class="section-title"><span class="section-num">贰</span>空间分布与热度</h2>
+      <div class="grid-2">
+        <div class="panel">
+          <h3 class="panel-title">各省景点分布</h3>
+          <div class="chart-wrap"><canvas id="chart-provinces"></canvas></div>
         </div>
-        <table id="location-table">
-          <thead>
-            <tr><th>名称</th><th>省份</th><th>标识</th><th>文献</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+        <div class="panel">
+          <h3 class="panel-title">热门打卡胜地</h3>
+          <div class="chart-wrap"><canvas id="chart-checkins"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-block">
+      <h2 class="section-title"><span class="section-num">叁</span>内容与典籍</h2>
+      <div class="grid-2">
+        <div class="panel">
+          <h3 class="panel-title">最新游记</h3>
+          <div class="table-scroll">
+            <table id="travelog-table">
+              <thead>
+                <tr><th>标题</th><th>作者</th><th>打卡</th><th>赞</th><th>发布时间</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">景点检索</h3>
+          <div class="filters">
+            <select id="filter-province"><option value="">全部省份</option></select>
+            <select id="filter-xuxiake">
+              <option value="">全部景点</option>
+              <option value="1">徐霞客足迹</option>
+              <option value="0">其他景点</option>
+            </select>
+            <button type="button" id="btn-filter">查询</button>
+          </div>
+          <div class="table-scroll">
+            <table id="location-table">
+              <thead>
+                <tr><th>名称</th><th>省份</th><th>标识</th><th>典籍</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </section>
   </main>
 
   <div id="modal" class="modal">
-    <div class="modal-content">
-      <button type="button" class="modal-close" id="modal-close" aria-label="关闭">×</button>
-      <h3 id="modal-title"></h3>
-      <div class="meta" id="modal-meta"></div>
-      <div class="body" id="modal-body"></div>
-      <ul class="checkin-list" id="modal-checkins"></ul>
+    <div class="modal-backdrop"></div>
+    <div class="modal-scroll" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <button type="button" class="modal-close" id="modal-close" aria-label="关闭">閤</button>
+        <div class="modal-seal">详览</div>
+        <h3 id="modal-title"></h3>
+        <div class="meta" id="modal-meta"></div>
+        <div class="body" id="modal-body"></div>
+        <ul class="checkin-list" id="modal-checkins"></ul>
+      </div>
     </div>
   </div>
 
-  <footer>徐霞客时空游记系统 · 数据库课程项目 · 端口 8081</footer>
+  <footer>
+    <p>徐霞客时空游记系统 · 数字人文数据看板</p>
+    <p class="footer-sub">xuxiake_travel_db</p>
+  </footer>
+
   <script src="/app.js"></script>
 </body>
 </html>

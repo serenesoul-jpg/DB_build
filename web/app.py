@@ -1,18 +1,31 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""徐霞客时空游记系统 — 数据可视化 API"""
+"""
+徐霞客时空游记系统 — 看板 REST API
+
+为 Web 数据看板提供只读 JSON 接口，直连 MySQL 业务库 xuxiake_travel_db。
+涵盖运营统计、景点与游记查询、文献摘录等能力。
+"""
 
 from __future__ import annotations
 
 import os
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import pymysql
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from pymysql.cursors import DictCursor
 
+# ---------------------------------------------------------------------------
+# 应用配置
+# ---------------------------------------------------------------------------
+
+APP_NAME = "徐霞客时空游记 API"
+APP_VERSION = "1.0.0"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 DB_CONFIG = {
@@ -29,8 +42,13 @@ app = Flask(__name__, static_folder=str(STATIC_DIR))
 CORS(app)
 
 
+# ---------------------------------------------------------------------------
+# 数据访问
+# ---------------------------------------------------------------------------
+
 @contextmanager
 def get_db():
+    """获取数据库连接，请求结束后自动关闭。"""
     conn = pymysql.connect(**DB_CONFIG)
     try:
         yield conn
@@ -38,26 +56,50 @@ def get_db():
         conn.close()
 
 
-def query_all(sql: str, params: tuple | None = None) -> list[dict]:
+def query_all(sql: str, params: tuple | None = None) -> list[dict[str, Any]]:
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, params or ())
             return list(cur.fetchall())
 
 
-def query_one(sql: str, params: tuple | None = None) -> dict | None:
+def query_one(sql: str, params: tuple | None = None) -> dict[str, Any] | None:
     rows = query_all(sql, params)
     return rows[0] if rows else None
 
 
+def serialize_datetimes(row: dict[str, Any], fields: tuple[str, ...]) -> None:
+    """将行内 datetime 字段格式化为 ISO 字符串，便于 JSON 序列化。"""
+    for key in fields:
+        val = row.get(key)
+        if isinstance(val, datetime):
+            row[key] = val.isoformat(sep=" ", timespec="seconds")
+
+
+def error_response(message: str, status: int, code: str) -> tuple[Any, int]:
+    return jsonify({"error": message, "code": code}), status
+
+
+# ---------------------------------------------------------------------------
+# REST API
+# ---------------------------------------------------------------------------
+
 @app.get("/api/health")
 def health():
+    """服务与数据库连通性探针。"""
     row = query_one("SELECT 1 AS ok")
-    return jsonify({"status": "ok", "database": DB_CONFIG["database"], "connected": bool(row)})
+    return jsonify({
+        "status": "ok" if row else "degraded",
+        "service": APP_NAME,
+        "version": APP_VERSION,
+        "database": DB_CONFIG["database"],
+        "connected": bool(row),
+    })
 
 
 @app.get("/api/stats")
 def stats():
+    """平台核心指标汇总（用户、景点、游记、打卡、文献、互动）。"""
     row = query_one(
         """
         SELECT
@@ -75,6 +117,7 @@ def stats():
 
 @app.get("/api/locations/provinces")
 def province_stats():
+    """各省级行政区景点数量及徐霞客足迹分布。"""
     rows = query_all(
         """
         SELECT Province,
@@ -90,23 +133,29 @@ def province_stats():
 
 @app.get("/api/locations/top-checkins")
 def top_checkins():
+    """按游记打卡次数排序的热门景点。"""
     limit = min(int(request.args.get("limit", 12)), 50)
     rows = query_all(
-        f"""
+        """
         SELECT l.LocationID, l.LocName, l.Province, l.IsXuXiake,
                COUNT(tl.TravelogID) AS checkin_count
         FROM `Location` l
         JOIN `Travelog_Location` tl ON l.LocationID = tl.LocationID
         GROUP BY l.LocationID, l.LocName, l.Province, l.IsXuXiake
         ORDER BY checkin_count DESC
-        LIMIT {limit}
-        """
+        LIMIT %s
+        """,
+        (limit,),
     )
     return jsonify(rows)
 
 
 @app.get("/api/locations")
 def locations():
+    """
+    景点分页列表。
+    查询参数：province, is_xuxiake (0|1), limit, offset
+    """
     province = request.args.get("province")
     is_xuxiake = request.args.get("is_xuxiake")
     limit = min(int(request.args.get("limit", 50)), 200)
@@ -118,7 +167,7 @@ def locations():
         FROM `Location`
         WHERE 1=1
     """
-    params: list = []
+    params: list[Any] = []
     if province:
         sql += " AND Province = %s"
         params.append(province)
@@ -127,15 +176,15 @@ def locations():
         params.append(1 if is_xuxiake in ("1", "true", "yes") else 0)
     sql += " ORDER BY IsXuXiake DESC, LocName LIMIT %s OFFSET %s"
     params.extend([limit, offset])
-    rows = query_all(sql, tuple(params))
-    return jsonify(rows)
+    return jsonify(query_all(sql, tuple(params)))
 
 
 @app.get("/api/travelogs/latest")
 def latest_travelogs():
+    """按发布时间倒序返回最新游记摘要。"""
     limit = min(int(request.args.get("limit", 20)), 100)
     rows = query_all(
-        f"""
+        """
         SELECT t.TravelogID, t.Title, t.PublishTime, t.Likes,
                u.Username,
                (SELECT COUNT(*) FROM `Travelog_Location` tl
@@ -143,17 +192,18 @@ def latest_travelogs():
         FROM `Travelog` t
         JOIN `User` u ON t.UserID = u.UserID
         ORDER BY t.PublishTime DESC
-        LIMIT {limit}
-        """
+        LIMIT %s
+        """,
+        (limit,),
     )
-    for r in rows:
-        if r.get("PublishTime"):
-            r["PublishTime"] = r["PublishTime"].isoformat(sep=" ", timespec="seconds")
+    for row in rows:
+        serialize_datetimes(row, ("PublishTime",))
     return jsonify(rows)
 
 
 @app.get("/api/travelogs/<int:travelog_id>")
 def travelog_detail(travelog_id: int):
+    """单篇游记详情，含关联打卡景点与时间线。"""
     row = query_one(
         """
         SELECT t.TravelogID, t.Title, t.Content, t.PublishTime, t.Likes,
@@ -165,9 +215,9 @@ def travelog_detail(travelog_id: int):
         (travelog_id,),
     )
     if not row:
-        return jsonify({"error": "游记不存在"}), 404
-    if row.get("PublishTime"):
-        row["PublishTime"] = row["PublishTime"].isoformat(sep=" ", timespec="seconds")
+        return error_response("未找到该游记", 404, "TRAVELOG_NOT_FOUND")
+
+    serialize_datetimes(row, ("PublishTime",))
 
     spots = query_all(
         """
@@ -179,22 +229,23 @@ def travelog_detail(travelog_id: int):
         """,
         (travelog_id,),
     )
-    for s in spots:
-        if s.get("CheckInTime"):
-            s["CheckInTime"] = s["CheckInTime"].isoformat(sep=" ", timespec="seconds")
+    for spot in spots:
+        serialize_datetimes(spot, ("CheckInTime",))
     row["checkins"] = spots
     return jsonify(row)
 
 
 @app.get("/api/locations/<int:location_id>/literature")
 def location_literature(location_id: int):
+    """指定景点下的历史文献摘录列表。"""
     loc = query_one(
         "SELECT LocationID, LocName, Province, IsXuXiake FROM `Location` WHERE LocationID = %s",
         (location_id,),
     )
     if not loc:
-        return jsonify({"error": "景点不存在"}), 404
-    lit = query_all(
+        return error_response("未找到该景点", 404, "LOCATION_NOT_FOUND")
+
+    literature = query_all(
         """
         SELECT LitID, OriginalText, TranslateInfo, WriteDate
         FROM `Literature`
@@ -204,8 +255,12 @@ def location_literature(location_id: int):
         """,
         (location_id,),
     )
-    return jsonify({"location": loc, "literature": lit})
+    return jsonify({"location": loc, "literature": literature})
 
+
+# ---------------------------------------------------------------------------
+# 静态资源（看板前端）
+# ---------------------------------------------------------------------------
 
 @app.get("/")
 def index():
@@ -220,4 +275,5 @@ def static_files(path: str):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8081")), debug=False)
+    port = int(os.environ.get("PORT", "8081"))
+    app.run(host="0.0.0.0", port=port, debug=False)
