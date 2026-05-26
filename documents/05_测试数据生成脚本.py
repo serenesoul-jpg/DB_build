@@ -190,13 +190,14 @@ def generate_locations(fake: Faker) -> list[tuple]:
             province,
             random.choice(OPENING_HOURS_POOL),
             1,
-            f"徐霞客曾游历之地。{fake.paragraph(nb_sentences=2)}",
+            "徐霞客曾游历之地，系统预置景点描述。",
         ))
 
+    seq = 1
     while len(rows) < NUM_LOCATIONS:
         province = random.choice(PROVINCES)
-        suffix = fake.city_suffix() if hasattr(fake, "city_suffix") else "景区"
-        name = f"{fake.city_name()}{suffix}"
+        name = f"{province[:-1]}风光带{seq:03d}号"
+        seq += 1
         if name in used_names:
             continue
         used_names.add(name)
@@ -205,7 +206,7 @@ def generate_locations(fake: Faker) -> list[tuple]:
             province,
             random.choice(OPENING_HOURS_POOL),
             0,
-            fake.paragraph(nb_sentences=3),
+            f"合成测试景点，编号{seq}，供批量灌数使用。",
         ))
 
     return rows[:NUM_LOCATIONS]
@@ -246,11 +247,15 @@ def generate_travelogs(fake: Faker) -> list[tuple]:
         "穿越{}的时空之旅", "重走徐霞客{}线", "{}打卡记",
         "在{}遇见古今", "{}三日漫记", "云海下的{}行",
     ]
-    for _ in range(NUM_TRAVELOGS):
+    places = [x[0] for x in XUXIAKE_LOCATIONS] + ["江南", "西南", "岭表"]
+    for i in range(NUM_TRAVELOGS):
         user_id = random.randint(1, NUM_USERS)
-        place = random.choice([x[0] for x in XUXIAKE_LOCATIONS] + ["江南", "西南", "岭表"])
+        place = random.choice(places)
         title = random.choice(titles_pool).format(place)
-        content = fake.paragraph(nb_sentences=8) + "\n\n" + fake.paragraph(nb_sentences=6)
+        content = (
+            f"第{i + 1}篇时空游记：途经{place}，记录山川形胜与行旅见闻。"
+            f"行程约{random.randint(2, 12)}日，天气{random.choice(['晴', '阴', '雨', '雾'])}。"
+        )
         publish = fake.date_time_between(start_date="-3y", end_date="now")
         likes = random.randint(0, 5000)
         rows.append((user_id, title, content, publish, likes))

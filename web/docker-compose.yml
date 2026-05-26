@@ -1,0 +1,21 @@
+services:
+  web:
+    build: .
+    container_name: xuxiake-travel-web
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      MYSQL_HOST: xu-xiake-mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: xuxiake_root
+      MYSQL_DATABASE: xuxiake_travel_db
+      PORT: 8081
+    networks:
+      - xu-xiake-net
+
+networks:
+  xu-xiake-net:
+    external: true
+    name: xu-xiake-visualization_xu-xiake-net

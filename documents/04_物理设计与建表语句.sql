@@ -16,8 +16,7 @@ DROP DATABASE IF EXISTS `xuxiake_travel_db`;
 
 CREATE DATABASE `xuxiake_travel_db`
     DEFAULT CHARACTER SET utf8mb4
-    DEFAULT COLLATE utf8mb4_unicode_ci
-    COMMENT '徐霞客时空游记系统业务库';
+    DEFAULT COLLATE utf8mb4_unicode_ci;
 
 USE `xuxiake_travel_db`;
 
